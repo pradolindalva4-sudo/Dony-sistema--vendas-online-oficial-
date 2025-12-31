@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title id="titulo-aba">SISTEMA DE VENDAS OFICIAL</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <style>
+        :root { --gold: #f59e0b; --dark: #050b1a; --card: #111827; --green: #10b981; --red: #ef4444; }
+        body { font-family: sans-serif; background: var(--dark); color: white; margin: 0; padding: 10px; }
+        .assinatura-eng { text-align: center; color: var(--gold); font-size: 13px; padding: 5px; border-bottom: 1px solid #1e293b; margin-bottom: 10px; font-weight: bold; }
+        .botao-secreto { position: absolute; top: 0; left: 0; width: 80px; height: 80px; background: transparent; z-index: 1000; }
+        .visor-total { background: #000; border: 2px solid var(--gold); border-radius: 12px; padding: 15px; text-align: center; margin-bottom: 15px; }
+        .visor-total strong { font-size: 34px; color: white; }
+        .btn-lanche { background: white; color: #000; border: none; padding: 18px; border-radius: 8px; font-weight: bold; width: 75%; text-align: left; margin-bottom: 10px; }
+        .btn-cancelar { background: var(--red); color: white; border: none; width: 20%; padding: 18px; border-radius: 8px; font-weight: bold; float: right; }
+        #painel-admin { display: none; background: #1f2937; border: 2px solid var(--gold); padding: 15px; border-radius: 12px; margin-bottom: 15px; }
+        #tela-pagamento { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 2000; text-align: center; padding-top: 40px; }
+        .caixa-pagamento { background: #fff; color: #000; width: 85%; max-width: 320px; margin: 0 auto; padding: 20px; border-radius: 20px; border: 5px solid var(--gold); }
+        #area-private { display: none; background: #fff; color: #000; padding: 10px; border-radius: 8px; margin-top: 10px; }
+        .tabela-vendas { width: 100%; border-collapse: collapse; font-size: 12px; color: #000; }
+        .tabela-vendas th, .tabela-vendas td { border: 1px solid #ccc; padding: 6px; text-align: left; }
+        input, textarea { width: 95%; padding: 10px; margin-bottom: 10px; border-radius: 8px; border: 1px solid var(--gold); font-family: sans-serif; }
+        @media print {
+            body * { visibility: hidden; }
+            #comprovante-imprimir, #comprovante-imprimir * { visibility: visible; }
+            #comprovante-imprimir { position: absolute; left: 0; top: 0; width: 80mm; display: block !important; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="assinatura-eng">Criado e desenvolvido por José Divino Plata da Lapa Engenheiro sênio</div>
+    <div class="botao-secreto" onclick="abrirEscritorio()"></div>
+
+    <div class="no-print">
+        <div id="painel-admin">
+            <div id="painel-master" style="display:none; border: 3px solid var(--red); padding: 15px; background: #000; border-radius: 12px; margin-bottom: 15px;">
+                <h3 style="color:var(--red); text-align:center; margin:0;">🚪 PORTA DA RESPONSABILIDADE</h3>
+                <p style="font-size: 11px; color: #aaa; text-align: center;">Engenheiro: José Divino</p>
+                <label>Nome Oficial da Loja:</label>
+                <input type="text" id="mestreNomeLoja">
+                <label>Código PIX (Motor Principal):</label>
+                <textarea id="mestrePixCodigo" style="height:60px;" placeholder="Cole o código Pix Copia e Cola aqui"></textarea>
+                <label>Data de Início do Serviço:</label>
+                <input type="date" id="mestreDataInicio">
+                <button onclick="salvarManutencaoMaster()" style="background:var(--red); color:white; width:100%; padding:15px; border:none; border-radius:8px; font-weight:bold; cursor:pointer;">✅ SOLDAR CONEXÃO E TRAVAR SITE</button>
+            </div>
+
+            <div id="sessao-inquilino" style="display:none;">
+                <h3 id="nome-escritorio" style="color:var(--gold); text-align:center;">📦 GESTÃO DE ESTOQUE</h3>
+                <div style="display: flex; gap: 5px; margin-bottom: 15px;">
+                    <button onclick="togglePrivate()" style="flex: 2; background: #4b5563; color: white; border: none; border-radius: 8px; font-weight: bold; padding: 12px;">🔐 PRIVATE (RELATÓRIOS)</button>
+                </div>
+                <div id="area-private">
+                    <h4 style="text-align: center; margin: 5px; color: #000;">📊 LIVRO DE REGISTRO OFICIAL</h4>
+                    <div id="container-planilha" style="max-height: 200px; overflow-y: auto; margin-bottom: 10px; border: 1px solid #ddd;"></div>
+                    <div style="display: flex; gap: 5px;">
+                        <button onclick="compartilharRelatorio()" style="flex: 1; background: var(--green); color: white; border: none; padding: 10px; border-radius: 5px; font-weight: bold;">📤 ENVIAR</button>
+                        <button onclick="limparVendas()" style="flex: 1; background: var(--red); color: white; border: none; padding: 10px; border-radius: 5px; font-weight: bold;">🗑️ ZERAR</button>
+                    </div>
+                </div>
+                <button onclick="verRelatorio()" style="background:var(--green); color:white; width:100%; padding:12px; border:none; border-radius:8px; margin: 10px 0;">📊 TOTAL DO DIA</button>
+                
+                <div style="background: #2d3748; padding: 10px; border-radius: 8px;">
+                    <label style="color: var(--gold); font-size: 12px;">CADASTRAR PRODUTO/MALA:</label>
+                    <input type="text" id="novoNome" placeholder="Nome do Produto">
+                    <input type="number" id="novoPreco" placeholder="Preço de Venda">
+                    <button onclick="adicionarLanche()" style="background:var(--gold); width:100%; padding:12px; border:none; border-radius:8px; font-weight:bold;">📥 SALVAR NO ESTOQUE</button>
+                </div>
+                <button onclick="document.getElementById('painel-admin').style.display='none'" style="background:gray; color:white; width:100%; padding:8px; border:none; border-radius:8px; margin-top:10px;">FECHAR</button>
+            </div>
+        </div>
+
+        <div class="visor-total">
+            <small style="color:var(--gold)" id="label-empresa">CARREGANDO...</small><br>
+            <strong id="totalDisplay">R$ 0,00</strong>
+        </div>
+
+        <input type="text" id="campoBusca" onkeyup="buscarProduto()" placeholder="🔍 Pesquisar no Estoque...">
+        <div id="resumo" style="background:var(--card); padding:12px; border-radius:8px; margin-bottom:15px; border-left:4px solid var(--gold); font-size:14px;">🛒 Aguardando itens...</div>
+        <div id="listaBotoes"></div>
+        <button onclick="finalizarPedido()" style="background:var(--green); color:white; width:100%; padding:22px; border:none; border-radius:12px; font-weight:bold; font-size:18px; margin-top:10px;">CONCLUIR PEDIDO</button>
+    </div>
+
+    <div id="tela-pagamento">
+        <div class="caixa-pagamento">
+            <h3 style="margin:0; color:#333;">PAGAMENTO PIX</h3>
+            <div id="qrcode-tela" style="margin: 15px 0; display:flex; justify-content:center;"></div>
+            <p id="valorTela" style="font-weight:bold; font-size:22px; color:#d4af37; margin:5px 0;"></p>
+            
+            <button onclick="confirmarManual()" style="background:var(--green); color:white; width:100%; padding:18px; border:none; border-radius:10px; font-weight:bold; font-size:16px;">✅ CONFIRMAR RECEBIMENTO</button>
+            <button onclick="document.getElementById('tela-pagamento').style.display='none'" style="background:#eee; color:#333; width:100%; padding:10px; border:none; border-radius:10px; margin-top:10px;">VOLTAR</button>
+        </div>
+    </div>
+
+    <div id="comprovante-imprimir" style="display:none; width: 80mm; padding: 10px; color: #000; background: white; text-align: center;">
+        <h2 id="nome-empresa-comp" style="margin: 0; text-transform: uppercase;">LOJA</h2>
+        <div style="border-top: 2px solid #000; margin: 10px 0;"></div>
+        <table style="width: 100%; font-size: 16px; text-align: left;">
+            <thead><tr><th>ITEM</th><th style="text-align: right;">VALOR</th></tr></thead>
+            <tbody id="tabelaItens"></tbody>
+        </table>
+        <div style="margin-top: 10px; background: #000; color: #fff; padding: 5px; display: flex; justify-content: space-between;">
+            <strong>TOTAL:</strong><strong id="totalImpressao"></strong>
+        </div>
+        <div id="qrcode-pix-imprimir" style="margin-top: 15px; display: flex; justify-content:center;"></div>
+        <p id="detalhe-pix" style="font-size: 10px; font-weight: bold; margin-top: 5px;"></p>
+    </div>
+
+    <script>
+        const SENHA_INQUILINO = "drkling2025";
+        const LOGIN_MESTRE = "josedivinopradodalapa@gmail.com";
+        const SENHA_MESTRE = "160620";
+        const PRAZO = 60 * 24 * 60 * 60 * 1000; 
+        
+        let config = JSON.parse(localStorage.getItem('dony_config')) || { nome: "ESTOQUE OFICIAL", pix: "", inicio: new Date().getTime() };
+        let extras = JSON.parse(localStorage.getItem('dony_ex')) || [];
+        let vendas = JSON.parse(localStorage.getItem('dony_v')) || [];
+        let pedido = [];
+
+        function abrirEscritorio() {
+            let acesso = prompt("LOGIN OU SENHA:");
+            if (acesso === SENHA_INQUILINO) {
+                document.getElementById('painel-admin').style.display = 'block';
+                document.getElementById('sessao-inquilino').style.display = 'block';
+                document.getElementById('painel-master').style.display = 'none';
+            } else if (acesso === LOGIN_MESTRE) {
+                if (prompt("SENHA MESTRE:") === SENHA_MESTRE) {
+                    document.getElementById('painel-admin').style.display = 'block';
+                    document.getElementById('painel-master').style.display = 'block';
+                    document.getElementById('sessao-inquilino').style.display = 'none';
+                    preencherDadosManutencao();
+                }
+            } else { alert("Acesso Negado."); }
+        }
+
+        function salvarManutencaoMaster() {
+            config.nome = document.getElementById('mestreNomeLoja').value;
+            config.pix = document.getElementById('mestrePixCodigo').value;
+            config.inicio = new Date(document.getElementById('mestreDataInicio').value).getTime();
+            localStorage.setItem('dony_config', JSON.stringify(config));
+            alert("CONEXÃO ESTABELECIDA!");
+            location.reload();
+        }
+
+        function renderizar() {
+            document.getElementById('label-empresa').innerText = "LOJA: " + config.nome;
+            document.getElementById('nome-empresa-comp').innerText = config.nome;
+            const lista = [...extras];
+            document.getElementById('listaBotoes').innerHTML = lista.map(i => `
+                <div class="item-container" data-nome="${i.nome}" style="margin-bottom:10px; display:flex; justify-content:space-between; align-items:center;">
+                    <button class="btn-lanche" onclick="add('${i.nome}', ${i.preco})">${i.nome} - R$ ${i.preco.toFixed(2)}</button>
+                    <button class="btn-cancelar" onclick="remover('${i.nome}')">X</button>
+                </div>
+            `).join('');
+        }
+
+        function confirmarManual() {
+            alert("O sistema confirmou o crédito na conta de: " + config.nome);
+            imprimirEFechar();
+        }
+
+        function add(n, p) { pedido.push({n, p}); atualizar(); }
+        function remover(n) { if(prompt("SENHA ADMIN [X]:") === SENHA_INQUILINO) { const idx = pedido.findIndex(i => i.n === n); if(idx > -1) { pedido.splice(idx, 1); atualizar(); } } }
+        
+        function atualizar() {
+            let t = pedido.reduce((acc, i) => acc + i.p, 0);
+            document.getElementById('totalDisplay').innerText = `R$ ${t.toFixed(2).replace('.',',')}`;
+            document.getElementById('resumo').innerText = pedido.length ? pedido.map(i => i.n).join(' | ') : "🛒 Aguardando itens...";
+        }
+
+        function finalizarPedido() {
+            if(!pedido.length) return;
+            document.getElementById('valorTela').innerText = document.getElementById('totalDisplay').innerText;
+            document.getElementById('totalImpressao').innerText = document.getElementById('totalDisplay').innerText;
+            document.getElementById('tabelaItens').innerHTML = pedido.map(i => `<tr><td>${i.n}</td><td style="text-align:right;">R$ ${i.p.toFixed(2)}</td></tr>`).join('');
+            document.getElementById("qrcode-tela").innerHTML = ""; 
+            if (config.pix) {
+                new QRCode(document.getElementById("qrcode-tela"), { text: config.pix, width: 200, height: 200 });
+                new QRCode(document.getElementById("qrcode-pix-imprimir"), { text: config.pix, width: 120, height: 120 });
+            }
+            document.getElementById('tela-pagamento').style.display = 'block';
+        }
+
+        function imprimirEFechar() {
+            const agora = new Date();
+            const dataHora = agora.toLocaleDateString('pt-BR') + " " + agora.getHours().toString().padStart(2, '0') + ":" + agora.getMinutes().toString().padStart(2, '0');
+            pedido.forEach(i => vendas.push({ n: i.n, p: i.p, h: dataHora }));
+            localStorage.setItem('dony_v', JSON.stringify(vendas));
+            window.print(); 
+            document.getElementById('tela-pagamento').style.display = 'none';
+            pedido = []; atualizar();
+        }
+
+        function adicionarLanche() { 
+            const n = document.getElementById('novoNome').value, p = parseFloat(document.getElementById('novoPreco').value); 
+            if(n && p) { extras.push({nome:n, preco:p}); localStorage.setItem('dony_ex', JSON.stringify(extras)); renderizar(); } 
+        }
+
+        function verRelatorio() { alert("TOTAL DO DIA: R$ " + vendas.reduce((a, b) => a + b.p, 0).toFixed(2)); }
+        function limparVendas() { if(prompt("SENHA ZERAR:") === SENHA_INQUILINO) { vendas = []; localStorage.setItem('dony_v', "[]"); atualizarPlanilha(); } }
+        
+        function buscarProduto() {
+            let b = document.getElementById('campoBusca').value.toLowerCase();
+            Array.from(document.getElementsByClassName('item-container')).forEach(div => { div.style.display = div.getAttribute('data-nome').toLowerCase().includes(b) ? "flex" : "none"; });
+        }
+        
+        function atualizarPlanilha() {
+            let html = "<table class='tabela-vendas'><tr><th>Data e Hora</th><th>Item</th><th>Preço</th></tr>";
+            vendas.slice().reverse().forEach(v => { html += `<tr><td>${v.h}</td><td>${v.n}</td><td>R$ ${v.p.toFixed(2)}</td></tr>`; });
+            document.getElementById('container-planilha').innerHTML = html + "</table>";
+        }
+        
+        renderizar();
+    </script>
+</body>
+</html>
